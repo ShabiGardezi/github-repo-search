@@ -48,6 +48,9 @@ const searchItem = {
   language: 'TypeScript',
   stargazers_count: 42,
   forks_count: 7,
+  open_issues_count: 3,
+  license: { name: 'MIT License' },
+  created_at: '2013-07-29T03:24:51Z',
   updated_at: '2026-01-01T00:00:00Z',
   owner: {
     login: 'vuejs',
@@ -93,6 +96,9 @@ describe('searchRepositories', () => {
       language: 'TypeScript',
       stargazersCount: 42,
       forksCount: 7,
+      openIssuesCount: 3,
+      license: 'MIT License',
+      createdAt: '2013-07-29T03:24:51Z',
       updatedAt: '2026-01-01T00:00:00Z',
       owner: {
         login: 'vuejs',
@@ -130,6 +136,9 @@ describe('searchRepositories', () => {
       htmlUrl: null,
       stargazersCount: 0,
       forksCount: 0,
+      openIssuesCount: 0,
+      license: null,
+      createdAt: null,
       updatedAt: null,
       owner: {
         login: 'octocat',
@@ -147,6 +156,9 @@ describe('getRepository', () => {
 
     expect(lastRequest().url).toBe('https://api.github.com/repos/vuejs/vue')
     expect(repository.fullName).toBe('vuejs/vue')
+    expect(repository.openIssuesCount).toBe(3)
+    expect(repository.license).toBe('MIT License')
+    expect(repository.createdAt).toBe('2013-07-29T03:24:51Z')
   })
 
   it('encodes owner and repo names in the path', async () => {

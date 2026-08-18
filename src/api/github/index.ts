@@ -37,6 +37,14 @@ export class GithubApiError extends Error {
   }
 }
 
+export const GITHUB_RATE_LIMIT_MESSAGE = 'GitHub rate limit reached. Try again later.'
+
+export function toGithubApiError(caught: unknown): GithubApiError {
+  return caught instanceof GithubApiError
+    ? caught
+    : new GithubApiError('Something went wrong. Please try again.')
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -73,6 +81,10 @@ function mapRepository(value: unknown): GithubRepository {
     language: typeof value.language === 'string' ? value.language : null,
     stargazersCount: typeof value.stargazers_count === 'number' ? value.stargazers_count : 0,
     forksCount: typeof value.forks_count === 'number' ? value.forks_count : 0,
+    openIssuesCount: typeof value.open_issues_count === 'number' ? value.open_issues_count : 0,
+    license:
+      isRecord(value.license) && typeof value.license.name === 'string' ? value.license.name : null,
+    createdAt: typeof value.created_at === 'string' ? value.created_at : null,
     updatedAt: typeof value.updated_at === 'string' ? value.updated_at : null,
     owner: {
       login,

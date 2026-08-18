@@ -12,7 +12,10 @@ export type GithubRepository = {
   language: string | null
   stargazersCount: number
   forksCount: number
+  openIssuesCount: number
+  license: string | null
   owner: GithubUser
+  createdAt: string | null
   updatedAt: string | null
 }
 
