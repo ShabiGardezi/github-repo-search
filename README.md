@@ -33,8 +33,8 @@ npm run build
 
 ## Deployed app
 
-github-repo-search-lac.vercel.app
-
+[github-repo-search-lac.vercel.app
+](https://github-repo-search-lac.vercel.app)
 ## Architecture
 
 `src/api/github` talks to the GitHub REST API with `fetch`. Search and detail state live in composables (`useRepositorySearch`, `useRepositoryDetail`). `App.vue` wires those to a search form, result cards, and a detail dialog. No router or global store — one screen is enough.
