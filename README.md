@@ -33,7 +33,7 @@ npm run build
 
 ## Deployed app
 
-_Add the live URL here._
+github-repo-search-lac.vercel.app
 
 ## Architecture
 
