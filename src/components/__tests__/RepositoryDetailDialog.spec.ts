@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { GithubApiError } from '@/api/github'
+import { GithubApiError, GITHUB_RATE_LIMIT_MESSAGE } from '@/api/github'
 import type { GithubRepository } from '@/api/github'
 import RepositoryDetailDialog from '@/components/RepositoryDetailDialog.vue'
 
@@ -79,14 +79,14 @@ describe('RepositoryDetailDialog', () => {
 
     const error = mountDialog({
       repository: null,
-      error: new GithubApiError('Not Found', { status: 404 }),
+      error: new GithubApiError('Nothing was found for this request.', { status: 404 }),
     })
-    expect(error.text()).toContain('Not Found')
+    expect(error.text()).toContain('Nothing was found for this request.')
     error.unmount()
 
     const rateLimit = mountDialog({
       repository: null,
-      error: new GithubApiError('limited', { status: 403, isRateLimit: true }),
+      error: new GithubApiError(GITHUB_RATE_LIMIT_MESSAGE, { status: 403, isRateLimit: true }),
     })
     expect(rateLimit.text()).toContain('GitHub rate limit reached')
     rateLimit.unmount()

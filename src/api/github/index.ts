@@ -49,56 +49,56 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+function nonEmptyString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() !== '' ? value : null
+}
+
 function isAbortError(error: unknown): boolean {
   return error instanceof Error
     ? error.name === 'AbortError'
     : error instanceof DOMException && error.name === 'AbortError'
 }
 
-function mapRepository(value: unknown): GithubRepository {
+function mapRepository(value: unknown): GithubRepository | null {
   if (!isRecord(value) || !isRecord(value.owner)) {
-    throw new GithubApiError('GitHub returned an unexpected response.')
+    return null
   }
 
-  const { id, name, full_name: fullName, owner } = value
-  const login = owner.login
+  const id = value.id
+  const name = nonEmptyString(value.name)
+  const fullName = nonEmptyString(value.full_name)
+  const login = nonEmptyString(value.owner.login)
 
-  if (
-    typeof id !== 'number' ||
-    typeof name !== 'string' ||
-    typeof fullName !== 'string' ||
-    typeof login !== 'string'
-  ) {
-    throw new GithubApiError('GitHub returned an unexpected response.')
+  if (typeof id !== 'number' || !name || !fullName || !login) {
+    return null
   }
 
   return {
     id,
     name,
     fullName,
-    description: typeof value.description === 'string' ? value.description : null,
-    htmlUrl: typeof value.html_url === 'string' ? value.html_url : null,
-    language: typeof value.language === 'string' ? value.language : null,
+    description: nonEmptyString(value.description),
+    htmlUrl: nonEmptyString(value.html_url),
+    language: nonEmptyString(value.language),
     stargazersCount: typeof value.stargazers_count === 'number' ? value.stargazers_count : 0,
     forksCount: typeof value.forks_count === 'number' ? value.forks_count : 0,
     openIssuesCount: typeof value.open_issues_count === 'number' ? value.open_issues_count : 0,
-    license:
-      isRecord(value.license) && typeof value.license.name === 'string' ? value.license.name : null,
-    createdAt: typeof value.created_at === 'string' ? value.created_at : null,
-    updatedAt: typeof value.updated_at === 'string' ? value.updated_at : null,
+    license: isRecord(value.license) ? nonEmptyString(value.license.name) : null,
+    createdAt: nonEmptyString(value.created_at),
+    updatedAt: nonEmptyString(value.updated_at),
     owner: {
       login,
-      avatarUrl: typeof owner.avatar_url === 'string' ? owner.avatar_url : null,
+      avatarUrl: nonEmptyString(value.owner.avatar_url),
     },
   }
 }
 
-function errorMessage(body: unknown, fallback: string): string {
+function githubErrorMessage(body: unknown): string {
   if (isRecord(body) && typeof body.message === 'string' && body.message) {
     return body.message
   }
 
-  return fallback
+  return ''
 }
 
 function rateLimitReset(headers: Headers): Date | null {
@@ -111,7 +111,7 @@ function rateLimitReset(headers: Headers): Date | null {
   return Number.isFinite(seconds) ? new Date(seconds * 1000) : null
 }
 
-function isRateLimitResponse(status: number, message: string, headers: Headers): boolean {
+function isRateLimitResponse(status: number, githubMessage: string, headers: Headers): boolean {
   if (status === 429) {
     return true
   }
@@ -121,7 +121,31 @@ function isRateLimitResponse(status: number, message: string, headers: Headers):
   }
 
   const remaining = headers.get('x-ratelimit-remaining')
-  return remaining === '0' || /rate limit/i.test(message)
+  return remaining === '0' || /rate limit/i.test(githubMessage)
+}
+
+function userFacingHttpMessage(status: number, isRateLimit: boolean): string {
+  if (isRateLimit) {
+    return GITHUB_RATE_LIMIT_MESSAGE
+  }
+
+  if (status === 404) {
+    return 'Nothing was found for this request.'
+  }
+
+  if (status === 422) {
+    return 'That search is not valid. Try different keywords.'
+  }
+
+  if (status === 403) {
+    return 'GitHub denied this request. Try again later.'
+  }
+
+  if (status >= 500) {
+    return 'GitHub is unavailable. Try again later.'
+  }
+
+  return 'Something went wrong. Please try again.'
 }
 
 async function githubRequest(path: string, signal?: AbortSignal): Promise<unknown> {
@@ -151,10 +175,11 @@ async function githubRequest(path: string, signal?: AbortSignal): Promise<unknow
   }
 
   if (!response.ok) {
-    const message = errorMessage(body, `GitHub request failed (${response.status})`)
-    throw new GithubApiError(message, {
+    const githubMessage = githubErrorMessage(body)
+    const isRateLimit = isRateLimitResponse(response.status, githubMessage, response.headers)
+    throw new GithubApiError(userFacingHttpMessage(response.status, isRateLimit), {
       status: response.status,
-      isRateLimit: isRateLimitResponse(response.status, message, response.headers),
+      isRateLimit,
       rateLimitReset: rateLimitReset(response.headers),
     })
   }
@@ -185,7 +210,14 @@ export async function searchRepositories(
   return {
     totalCount: typeof body.total_count === 'number' ? body.total_count : 0,
     incompleteResults: body.incomplete_results === true,
-    items: body.items.map(mapRepository),
+    items: body.items.map((item) => {
+      const repository = mapRepository(item)
+      if (!repository) {
+        throw new GithubApiError('GitHub returned an unexpected response.')
+      }
+
+      return repository
+    }),
   }
 }
 
@@ -194,10 +226,16 @@ export async function getRepository(
   repo: string,
   options: GetRepositoryOptions = {},
 ): Promise<GithubRepository> {
-  return mapRepository(
+  const repository = mapRepository(
     await githubRequest(
       `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
       options.signal,
     ),
   )
+
+  if (!repository) {
+    throw new GithubApiError('GitHub returned an unexpected response.')
+  }
+
+  return repository
 }

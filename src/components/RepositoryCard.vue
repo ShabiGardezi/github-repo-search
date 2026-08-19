@@ -20,12 +20,12 @@ const updatedLabel = computed(() => {
 <template>
   <v-card variant="outlined">
     <v-card-item>
-      <v-card-title class="text-wrap">{{ repository.name }}</v-card-title>
-      <v-card-subtitle>{{ repository.owner.login }}</v-card-subtitle>
+      <v-card-title class="text-wrap break-long">{{ repository.name }}</v-card-title>
+      <v-card-subtitle class="break-long">{{ repository.owner.login }}</v-card-subtitle>
     </v-card-item>
 
     <v-card-text>
-      <p v-if="repository.description" class="repository-card__description">
+      <p v-if="repository.description" class="repository-card__description break-long">
         {{ repository.description }}
       </p>
       <div class="repository-card__meta">
@@ -45,6 +45,8 @@ const updatedLabel = computed(() => {
 .repository-card__description {
   margin: 0 0 0.75rem;
   color: rgba(var(--v-theme-on-surface), 0.7);
+  max-height: 6rem;
+  overflow: auto;
 }
 
 .repository-card__meta {
@@ -52,5 +54,9 @@ const updatedLabel = computed(() => {
   flex-wrap: wrap;
   gap: 0.25rem 1rem;
   font-size: 0.875rem;
+}
+
+.break-long {
+  overflow-wrap: anywhere;
 }
 </style>

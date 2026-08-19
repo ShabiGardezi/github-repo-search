@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { GITHUB_RATE_LIMIT_MESSAGE } from '@/api/github'
 import type { GithubApiError, GithubRepository } from '@/api/github'
 import { formatGithubDate } from '@/utils/formatGithubDate'
 
@@ -30,12 +29,13 @@ function onOpenChange(value: boolean): void {
   <v-dialog
     :model-value="open"
     max-width="36rem"
+    scrollable
     aria-labelledby="repository-detail-title"
     @update:model-value="onOpenChange"
   >
     <v-card>
       <v-card-item>
-        <v-card-title id="repository-detail-title" class="text-wrap">
+        <v-card-title id="repository-detail-title" class="text-wrap break-long">
           {{ title }}
         </v-card-title>
         <template #append>
@@ -49,17 +49,17 @@ function onOpenChange(value: boolean): void {
           <p class="detail-status">Loading…</p>
         </div>
 
-        <v-alert v-else-if="error?.isRateLimit" type="warning" variant="tonal">
-          {{ GITHUB_RATE_LIMIT_MESSAGE }}
-        </v-alert>
-
-        <v-alert v-else-if="error" type="error" variant="tonal">
+        <v-alert
+          v-else-if="error"
+          :type="error.isRateLimit ? 'warning' : 'error'"
+          variant="tonal"
+        >
           {{ error.message }}
         </v-alert>
 
         <template v-else-if="repository">
-          <p>{{ repository.owner.login }}</p>
-          <p v-if="repository.description">{{ repository.description }}</p>
+          <p class="break-long">{{ repository.owner.login }}</p>
+          <p v-if="repository.description" class="break-long">{{ repository.description }}</p>
 
           <ul class="detail-list">
             <li v-if="repository.language">Language: {{ repository.language }}</li>
@@ -93,5 +93,9 @@ function onOpenChange(value: boolean): void {
 .detail-list {
   margin: 0 0 1rem;
   padding-left: 1.25rem;
+}
+
+.break-long {
+  overflow-wrap: anywhere;
 }
 </style>

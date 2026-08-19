@@ -134,4 +134,18 @@ describe('useRepositorySearch', () => {
 
     expect(isLoading.value).toBe(true)
   })
+
+  it('shows the unexpected-response error and clears loading', async () => {
+    searchRepositories.mockRejectedValue(
+      new GithubApiError('GitHub returned an unexpected response.'),
+    )
+
+    const { query, error, isLoading, repositories, search } = useRepositorySearch()
+    query.value = 'vue'
+    await search()
+
+    expect(error.value?.message).toBe('GitHub returned an unexpected response.')
+    expect(isLoading.value).toBe(false)
+    expect(repositories.value).toEqual([])
+  })
 })

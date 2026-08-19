@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { GithubApiError, getRepository, searchRepositories } from '@/api/github'
+import { GITHUB_RATE_LIMIT_MESSAGE, GithubApiError, getRepository, searchRepositories } from '@/api/github'
 
 function jsonResponse(
   body: unknown,
@@ -128,6 +128,7 @@ describe('searchRepositories', () => {
     const result = await searchRepositories('incomplete')
 
     expect(result.incompleteResults).toBe(true)
+    expect(result.items).toHaveLength(1)
     expect(result.items[0]).toMatchObject({
       id: 2,
       fullName: 'octocat/incomplete',
@@ -144,6 +145,22 @@ describe('searchRepositories', () => {
         login: 'octocat',
         avatarUrl: null,
       },
+    })
+  })
+
+  it('fails when a search item cannot be mapped', async () => {
+    mockFetch(
+      jsonResponse({
+        total_count: 2,
+        incomplete_results: false,
+        items: [searchItem, { id: 'bad' }],
+      }),
+    )
+
+    await expect(searchRepositories('vue')).rejects.toMatchObject({
+      name: 'GithubApiError',
+      message: 'GitHub returned an unexpected response.',
+      isRateLimit: false,
     })
   })
 })
@@ -184,7 +201,7 @@ describe('GitHub API errors', () => {
     expect(error).toBeInstanceOf(GithubApiError)
     expect(error).toMatchObject({
       status: 404,
-      message: 'Not Found',
+      message: 'Nothing was found for this request.',
       isRateLimit: false,
     })
   })
@@ -207,7 +224,7 @@ describe('GitHub API errors', () => {
       name: 'GithubApiError',
       status: 403,
       isRateLimit: true,
-      message: 'API rate limit exceeded',
+      message: GITHUB_RATE_LIMIT_MESSAGE,
       rateLimitReset: new Date(1710000000 * 1000),
     })
   })
@@ -218,6 +235,7 @@ describe('GitHub API errors', () => {
     await expect(searchRepositories('vue')).rejects.toMatchObject({
       status: 429,
       isRateLimit: true,
+      message: GITHUB_RATE_LIMIT_MESSAGE,
     })
   })
 
@@ -235,6 +253,17 @@ describe('GitHub API errors', () => {
     await expect(searchRepositories('vue')).rejects.toMatchObject({
       status: 403,
       isRateLimit: false,
+      message: 'GitHub denied this request. Try again later.',
+    })
+  })
+
+  it('maps 422 responses to a search validation message', async () => {
+    mockFetch(jsonResponse({ message: 'Validation Failed' }, { status: 422 }))
+
+    await expect(searchRepositories('bad:query')).rejects.toMatchObject({
+      status: 422,
+      isRateLimit: false,
+      message: 'That search is not valid. Try different keywords.',
     })
   })
 
@@ -258,9 +287,17 @@ describe('GitHub API errors', () => {
     expect(lastRequest().init.signal).toBe(signal)
   })
 
-  it('rejects unexpected payloads', async () => {
+  it('rejects unexpected search payloads', async () => {
     mockFetch(jsonResponse({ unexpected: true }))
 
     await expect(searchRepositories('vue')).rejects.toBeInstanceOf(GithubApiError)
+  })
+
+  it('rejects unexpected detail payloads', async () => {
+    mockFetch(jsonResponse({ unexpected: true }))
+
+    await expect(getRepository('vuejs', 'vue')).rejects.toMatchObject({
+      message: 'GitHub returned an unexpected response.',
+    })
   })
 })

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { GITHUB_RATE_LIMIT_MESSAGE } from '@/api/github'
 import RepositoryCard from '@/components/RepositoryCard.vue'
 import RepositoryDetailDialog from '@/components/RepositoryDetailDialog.vue'
 import RepositorySearchForm from '@/components/RepositorySearchForm.vue'
@@ -33,15 +32,11 @@ const {
           </template>
 
           <v-alert
-            v-else-if="error?.isRateLimit"
+            v-else-if="error"
             class="mt-6"
-            type="warning"
+            :type="error.isRateLimit ? 'warning' : 'error'"
             variant="tonal"
           >
-            {{ GITHUB_RATE_LIMIT_MESSAGE }}
-          </v-alert>
-
-          <v-alert v-else-if="error" class="mt-6" type="error" variant="tonal">
             {{ error.message }}
           </v-alert>
 
