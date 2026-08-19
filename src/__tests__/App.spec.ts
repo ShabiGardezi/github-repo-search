@@ -5,12 +5,14 @@ import type { GithubRepository } from '@/api/github'
 import App from '../App.vue'
 
 const searchRepositories = vi.hoisted(() => vi.fn())
+const getRepository = vi.hoisted(() => vi.fn())
 
 vi.mock('@/api/github', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api/github')>()
   return {
     ...actual,
     searchRepositories,
+    getRepository,
   }
 })
 
@@ -29,7 +31,6 @@ const vueRepo: GithubRepository = {
   updatedAt: '2026-01-15T00:00:00Z',
   owner: {
     login: 'vuejs',
-    avatarUrl: null,
   },
 }
 
@@ -42,6 +43,7 @@ async function searchFor(wrapper: ReturnType<typeof mount>, query: string): Prom
 describe('App search', () => {
   beforeEach(() => {
     searchRepositories.mockReset()
+    getRepository.mockReset()
   })
 
   afterEach(() => {
@@ -50,8 +52,6 @@ describe('App search', () => {
 
   it('renders repository results after a successful search', async () => {
     searchRepositories.mockResolvedValue({
-      totalCount: 1,
-      incompleteResults: false,
       items: [vueRepo],
     })
 
@@ -68,8 +68,6 @@ describe('App search', () => {
 
   it('shows an empty state when GitHub returns no repositories', async () => {
     searchRepositories.mockResolvedValue({
-      totalCount: 0,
-      incompleteResults: false,
       items: [],
     })
 
@@ -114,5 +112,35 @@ describe('App search', () => {
 
     expect(wrapper.text()).toContain('GitHub rate limit reached. Try again later.')
     expect(wrapper.text()).not.toContain('Searching…')
+  })
+
+  it('opens the detail dialog from View details', async () => {
+    searchRepositories.mockResolvedValue({ items: [vueRepo] })
+    getRepository.mockResolvedValue(vueRepo)
+
+    const wrapper = mount(App, {
+      global: {
+        stubs: {
+          VDialog: {
+            template: '<div><slot /></div>',
+          },
+        },
+      },
+    })
+
+    await searchFor(wrapper, 'vue')
+
+    const detailsButton = wrapper.findAll('button').find((button) => button.text() === 'View details')
+    expect(detailsButton).toBeDefined()
+    await detailsButton!.trigger('click')
+    await flushPromises()
+
+    expect(getRepository).toHaveBeenCalledWith(
+      'vuejs',
+      'vue',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
+    expect(wrapper.text()).toContain('View on GitHub (opens in a new tab)')
+    expect(wrapper.text()).toContain('MIT License')
   })
 })

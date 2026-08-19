@@ -28,7 +28,6 @@ const vueRepo = {
   updatedAt: '2026-01-01T00:00:00Z',
   owner: {
     login: 'vuejs',
-    avatarUrl: null,
   },
 }
 
@@ -43,8 +42,6 @@ describe('useRepositorySearch', () => {
 
   it('loads repositories for a query', async () => {
     searchRepositories.mockResolvedValue({
-      totalCount: 1,
-      incompleteResults: false,
       items: [vueRepo],
     })
 
@@ -52,7 +49,10 @@ describe('useRepositorySearch', () => {
     query.value = 'vue'
     await search()
 
-    expect(searchRepositories).toHaveBeenCalledWith('vue')
+    expect(searchRepositories).toHaveBeenCalledWith(
+      'vue',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
     expect(repositories.value).toEqual([vueRepo])
     expect(error.value).toBeNull()
     expect(isEmpty.value).toBe(false)
@@ -60,8 +60,6 @@ describe('useRepositorySearch', () => {
 
   it('shows an empty state when GitHub returns no items', async () => {
     searchRepositories.mockResolvedValue({
-      totalCount: 0,
-      incompleteResults: false,
       items: [],
     })
 
@@ -95,25 +93,41 @@ describe('useRepositorySearch', () => {
     expect(error.value?.isRateLimit).toBe(true)
   })
 
-  it('does not search while a request is already loading', async () => {
-    let resolveSearch: (() => void) | undefined
-    searchRepositories.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolveSearch = () =>
-            resolve({ totalCount: 0, incompleteResults: false, items: [] })
-        }),
-    )
+  it('ignores a stale response when a newer search is started', async () => {
+    let resolveFirst: ((value: { items: typeof vueRepo[] }) => void) | undefined
+    let resolveSecond: ((value: { items: typeof vueRepo[] }) => void) | undefined
 
-    const { query, search } = useRepositorySearch()
+    searchRepositories
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecond = resolve
+          }),
+      )
+
+    const { query, repositories, search } = useRepositorySearch()
     query.value = 'vue'
+    const first = search()
+    query.value = 'react'
+    const second = search()
 
-    const firstSearch = search()
-    await search()
-    resolveSearch?.()
-    await firstSearch
+    resolveFirst?.({ items: [vueRepo] })
+    await flushPromises()
+    expect(repositories.value).toEqual([])
 
-    expect(searchRepositories).toHaveBeenCalledTimes(1)
+    const reactRepo = { ...vueRepo, id: 2, name: 'react', fullName: 'facebook/react' }
+    resolveSecond?.({ items: [reactRepo] })
+    await first
+    await second
+
+    expect(searchRepositories).toHaveBeenCalledTimes(2)
+    expect(repositories.value).toEqual([reactRepo])
   })
 
   it('does not search an empty query', async () => {

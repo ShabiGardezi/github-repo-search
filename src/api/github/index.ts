@@ -19,21 +19,18 @@ const GITHUB_API_VERSION = '2022-11-28'
 export class GithubApiError extends Error {
   readonly status: number | null
   readonly isRateLimit: boolean
-  readonly rateLimitReset: Date | null
 
   constructor(
     message: string,
     options: {
       status?: number | null
       isRateLimit?: boolean
-      rateLimitReset?: Date | null
     } = {},
   ) {
     super(message)
     this.name = 'GithubApiError'
     this.status = options.status ?? null
     this.isRateLimit = options.isRateLimit ?? false
-    this.rateLimitReset = options.rateLimitReset ?? null
   }
 }
 
@@ -88,7 +85,6 @@ function mapRepository(value: unknown): GithubRepository | null {
     updatedAt: nonEmptyString(value.updated_at),
     owner: {
       login,
-      avatarUrl: nonEmptyString(value.owner.avatar_url),
     },
   }
 }
@@ -99,16 +95,6 @@ function githubErrorMessage(body: unknown): string {
   }
 
   return ''
-}
-
-function rateLimitReset(headers: Headers): Date | null {
-  const reset = headers.get('x-ratelimit-reset')
-  if (!reset) {
-    return null
-  }
-
-  const seconds = Number(reset)
-  return Number.isFinite(seconds) ? new Date(seconds * 1000) : null
 }
 
 function isRateLimitResponse(status: number, githubMessage: string, headers: Headers): boolean {
@@ -180,7 +166,6 @@ async function githubRequest(path: string, signal?: AbortSignal): Promise<unknow
     throw new GithubApiError(userFacingHttpMessage(response.status, isRateLimit), {
       status: response.status,
       isRateLimit,
-      rateLimitReset: rateLimitReset(response.headers),
     })
   }
 
@@ -192,15 +177,6 @@ export async function searchRepositories(
   options: SearchRepositoriesOptions = {},
 ): Promise<GithubRepositorySearchResult> {
   const params = new URLSearchParams({ q: query })
-
-  if (options.page !== undefined) {
-    params.set('page', String(options.page))
-  }
-
-  if (options.perPage !== undefined) {
-    params.set('per_page', String(options.perPage))
-  }
-
   const body = await githubRequest(`/search/repositories?${params.toString()}`, options.signal)
 
   if (!isRecord(body) || !Array.isArray(body.items)) {
@@ -208,8 +184,6 @@ export async function searchRepositories(
   }
 
   return {
-    totalCount: typeof body.total_count === 'number' ? body.total_count : 0,
-    incompleteResults: body.incomplete_results === true,
     items: body.items.map((item) => {
       const repository = mapRepository(item)
       if (!repository) {

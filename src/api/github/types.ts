@@ -1,6 +1,5 @@
 export type GithubUser = {
   login: string
-  avatarUrl: string | null
 }
 
 export type GithubRepository = {
@@ -20,14 +19,10 @@ export type GithubRepository = {
 }
 
 export type GithubRepositorySearchResult = {
-  totalCount: number
-  incompleteResults: boolean
   items: GithubRepository[]
 }
 
 export type SearchRepositoriesOptions = {
-  page?: number
-  perPage?: number
   signal?: AbortSignal
 }
 

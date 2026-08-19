@@ -1,1 +1,21 @@
-@use 'vuetify/settings';
+@use 'vuetify/settings' with (
+  $body-font-family: (
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif,
+  ),
+  $heading-font-family: (
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif,
+  ),
+  $border-radius-root: 8px,
+);

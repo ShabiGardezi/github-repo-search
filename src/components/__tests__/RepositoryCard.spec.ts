@@ -18,7 +18,6 @@ const repository: GithubRepository = {
   updatedAt: '2026-01-15T00:00:00Z',
   owner: {
     login: 'vuejs',
-    avatarUrl: null,
   },
 }
 
@@ -62,7 +61,6 @@ describe('RepositoryCard', () => {
           updatedAt: null,
           owner: {
             login: 'octocat',
-            avatarUrl: null,
           },
         },
       },

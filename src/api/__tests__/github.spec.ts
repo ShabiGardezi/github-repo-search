@@ -73,20 +73,18 @@ describe('searchRepositories', () => {
       }),
     )
 
-    const result = await searchRepositories('vue', { page: 2, perPage: 10 })
+    const result = await searchRepositories('vue')
     const url = new URL(lastRequest().url)
     const headers = new Headers(lastRequest().init.headers)
 
     expect(url.origin).toBe('https://api.github.com')
     expect(url.pathname).toBe('/search/repositories')
     expect(url.searchParams.get('q')).toBe('vue')
-    expect(url.searchParams.get('page')).toBe('2')
-    expect(url.searchParams.get('per_page')).toBe('10')
+    expect(url.searchParams.get('page')).toBeNull()
+    expect(url.searchParams.get('per_page')).toBeNull()
     expect(headers.get('Accept')).toBe('application/vnd.github+json')
     expect(headers.get('X-GitHub-Api-Version')).toBe('2022-11-28')
 
-    expect(result.totalCount).toBe(1)
-    expect(result.incompleteResults).toBe(false)
     expect(result.items[0]).toMatchObject({
       id: 1,
       name: 'vue',
@@ -102,7 +100,6 @@ describe('searchRepositories', () => {
       updatedAt: '2026-01-01T00:00:00Z',
       owner: {
         login: 'vuejs',
-        avatarUrl: 'https://avatars.githubusercontent.com/u/6128107',
       },
     })
   })
@@ -127,7 +124,6 @@ describe('searchRepositories', () => {
 
     const result = await searchRepositories('incomplete')
 
-    expect(result.incompleteResults).toBe(true)
     expect(result.items).toHaveLength(1)
     expect(result.items[0]).toMatchObject({
       id: 2,
@@ -143,7 +139,6 @@ describe('searchRepositories', () => {
       updatedAt: null,
       owner: {
         login: 'octocat',
-        avatarUrl: null,
       },
     })
   })
@@ -225,7 +220,6 @@ describe('GitHub API errors', () => {
       status: 403,
       isRateLimit: true,
       message: GITHUB_RATE_LIMIT_MESSAGE,
-      rateLimitReset: new Date(1710000000 * 1000),
     })
   })
 

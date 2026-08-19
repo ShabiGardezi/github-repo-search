@@ -30,7 +30,6 @@ const vueRepo: GithubRepository = {
   updatedAt: '2026-01-01T00:00:00Z',
   owner: {
     login: 'vuejs',
-    avatarUrl: null,
   },
 }
 
